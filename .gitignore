@@ -1,0 +1,5 @@
+   data/
+   *.csv
+   *.npz
+   __pycache__/
+   .venv/
