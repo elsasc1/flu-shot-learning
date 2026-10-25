@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "flushot"
+version = "1.0.0"
+description = "Flu Shot Learning (DrivenData): LightGBM + CatBoost pipeline, top 1.5% public leaderboard"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.26",
+    "pandas>=2.1",
+    "scipy>=1.11",
+    "scikit-learn>=1.4",
+    "lightgbm>=4.3",
+    "catboost>=1.2",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.5"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 120
+src = ["src", "tests"]
+extend-exclude = ["experiments"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
+ignore = ["E731", "E741"]

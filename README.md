@@ -51,27 +51,47 @@ The refit and the seed averaging only change the test predictions. CV cannot mea
 Data is not included: the competition rules forbid redistributing it. Download the 4 CSV files from the competition page into `data/`.
 
 ```bash
-pip install pandas numpy scipy scikit-learn lightgbm catboost
-python train.py                                     # v1: CV of logistic regression, LightGBM, CatBoost
-python blend.py                                     # blending experiments (average / rank weights / stacking)
-python make_submission_v1.py                        # submission 1 (run after blend.py, which also writes submission.csv)
-python train2.py lgbm                               # v2: CV + full-data refit with seeds
-python train2.py cat_allcat
-python train2.py cat_num
-python compare.py write lgbm2+allcat2+catnum2       # all blend combinations + submission 2
-python fe_test.py                                   # feature-engineering A/B test
+pip install -e .                                        # Python >= 3.10
+python -m flushot train lgbm cat_num cat_allcat         # CV + full-data refit, saves outputs/preds_*.npz
+python -m flushot baseline                              # logistic regression baseline
+python -m flushot compare                               # OOF AUC of every model combination
+python -m flushot submit lgbm cat_num cat_allcat        # v2 submission, format checked before writing
 ```
+
+The package reproduces the original competition scripts exactly: run on the same data, both give identical out-of-fold and test predictions (max absolute difference 0.0).
 
 On a Mac, if LightGBM complains about `libomp.dylib`, run `brew install libomp`.
 
-| File | Role |
+## Tests
+
+The real data cannot be shared, so the tests run on **synthetic data with the exact schema** of the competition files (`python -m flushot fake-data`). GitHub Actions runs the linter, the tests and a full smoke run on every push.
+
+```bash
+pip install -e ".[dev]"
+pytest
+```
+
+What the tests check:
+
+- **No leakage:** every row gets exactly one out-of-fold prediction, from a model that never saw it; the baseline's imputer and scaler are fitted on training rows only.
+- **Validation:** folds partition the data, keep the class balance and are identical for a given seed.
+- **Reproducibility:** two runs with the same seeds give bit-identical predictions.
+- **Submission:** wrong columns, reordered or missing IDs, missing values and probabilities outside [0, 1] are all rejected before writing the file.
+- **End to end:** fake data → train → compare → submit, through the command line.
+
+## Project structure
+
+| Path | Role |
 |---|---|
-| `train.py` | v1: 5-fold CV of the three models; test predictions averaged over fold models |
-| `blend.py` | blending experiments |
-| `make_submission_v1.py` | 50/50 LightGBM + CatBoost submission, with format checks |
-| `train2.py` | v2: CV, then full-data refit averaged over several seeds |
-| `compare.py` | OOF score of every model combination; writes submission 2 |
-| `fe_test.py` | A/B test of the engineered features |
+| `src/flushot/data.py` | loading, the two kept features, categorical encoding |
+| `src/flushot/models.py` | LightGBM and CatBoost configurations of the v2 submission |
+| `src/flushot/cv.py` | stratified 5-fold CV, OOF predictions, full-data refit with seed averaging |
+| `src/flushot/baseline.py` | logistic regression baseline in a leak-free scikit-learn pipeline |
+| `src/flushot/submission.py` | blending, combination ranking, submission checks |
+| `src/flushot/synthetic.py` | synthetic data with the real schema, for tests and CI |
+| `src/flushot/cli.py` | `python -m flushot` commands |
+| `tests/` | pytest suite |
+| `experiments/` | the original competition scripts, kept as they were run (v1, blending and stacking experiments, feature-engineering A/B test); run them from the repo root, e.g. `python experiments/train2.py lgbm` |
 
 ## Data citation
 
